@@ -6,6 +6,7 @@ from urllib.parse import urljoin, urlparse
 import requests
 from zeep import Client, CachingClient
 from zeep.plugins import HistoryPlugin
+from zeep.transports import Transport
 
 from .project import Project
 from .project_groups import ProjectGroup
@@ -122,14 +123,21 @@ class Polarion(object):
             raise Exception(
                 'Cannot login because WSDL has no SessionWebService')
     
+
     def get_client(self, service, plugins=None):
         if plugins is None:
             plugins = []
+
+        client = None
+
+        session = requests.Session()
+        session.verify = self.verify_certificate
+        transport = Transport(session=session)
+
         if self.cache:
-            client = CachingClient(self.services[service]['url'] + '?wsdl', plugins=plugins)
+            client = CachingClient(self.services[service]['url'] + '?wsdl', plugins=plugins, transport=transport)
         else:
-            client = Client(self.services[service]['url'] + '?wsdl', plugins=plugins)
-        client.transport.session.verify = self.verify_certificate
+            client = Client(self.services[service]['url'] + '?wsdl', plugins=plugins, transport=transport)
         return client
 
     def _updateServices(self):

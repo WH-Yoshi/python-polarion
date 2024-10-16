@@ -11,6 +11,8 @@ from zeep.transports import Transport
 from .project import Project
 from .project_groups import ProjectGroup
 
+from .workitem import Workitem
+import logging
 logger = logging.getLogger(__name__)
 
 _baseServiceUrl = 'ws/services'
@@ -267,6 +269,24 @@ class Polarion(object):
         self.default_project_group = service.getProjectGroupAtLocation('default:/')
         projects = service.getDeepContainedProjects(self.default_project_group.uri)
         return [Project(self, project.id) for project in projects]
+    def queryWorkitems(self, query: str, sort: str):
+        """Get List of workitems based on a query.
+        Query is global and not project specific, so it will return workitems from all projects. Use with caution.
+        Uses the Polarion query language. Documented as 'Advanced Work Item querying' in the Polarion documentation.
+
+        :param query: The query.
+        :param sort: The field to be used for sorting.
+        :return: The workitems matching the query
+        :rtype: Workitem[]
+        """
+        service = self.getService("Tracker")
+        results = service.queryWorkItems(query, sort, fields=["project.id"])
+        workitems = []
+        for result in results:
+            project = self.getProject(result.project.id)
+            workitems.append(Workitem(self, project, uri=result.uri))
+        return workitems
+
 
     def downloadFromSvn(self, url):
 

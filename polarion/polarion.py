@@ -13,7 +13,6 @@ from .project_groups import ProjectGroup
 
 from .workitem import Workitem
 import logging
-from .project_groups import ProjectGroup
 
 logger = logging.getLogger(__name__)
 
@@ -126,13 +125,7 @@ class Polarion(object):
         else:
             raise Exception(
                 'Cannot login because WSDL has no SessionWebService')
-    
-
-    def get_client(self, service, plugins=None):
-        if plugins is None:
-            plugins = []
-
-    
+        
     def get_client(self, service, plugins=None):
         if plugins is None:
             plugins = []

@@ -6,9 +6,13 @@ from urllib.parse import urljoin, urlparse
 import requests
 from zeep import Client, CachingClient
 from zeep.plugins import HistoryPlugin
+from zeep.transports import Transport
 
 from .project import Project
 from .project_groups import ProjectGroup
+
+from .workitem import Workitem
+import logging
 
 logger = logging.getLogger(__name__)
 
@@ -121,15 +125,21 @@ class Polarion(object):
         else:
             raise Exception(
                 'Cannot login because WSDL has no SessionWebService')
-    
+        
     def get_client(self, service, plugins=None):
         if plugins is None:
             plugins = []
+
+        client = None
+
+        session = requests.Session()
+        session.verify = self.verify_certificate
+        transport = Transport(session=session)
+
         if self.cache:
-            client = CachingClient(self.services[service]['url'] + '?wsdl', plugins=plugins)
+            client = CachingClient(self.services[service]['url'] + '?wsdl', plugins=plugins, transport=transport)
         else:
-            client = Client(self.services[service]['url'] + '?wsdl', plugins=plugins)
-        client.transport.session.verify = self.verify_certificate
+            client = Client(self.services[service]['url'] + '?wsdl', plugins=plugins, transport=transport)
         return client
 
     def _updateServices(self):
@@ -243,6 +253,39 @@ class Polarion(object):
         :rtype: Project
         """
         return Project(self, project_id)
+
+    def getProjectGroup(self, group_name):
+        """
+        Get a Polarion project group
+
+        :param group_name: The name of the project group
+        :return: The request project group
+        :rtype: ProjectGroup
+        """
+        return ProjectGroup(self, group_name)
+
+    def getAllProjects(self):
+        service = self.getService('Project')
+        self.default_project_group = service.getProjectGroupAtLocation('default:/')
+        projects = service.getDeepContainedProjects(self.default_project_group.uri)
+        return [Project(self, project.id) for project in projects]
+    def queryWorkitems(self, query: str, sort: str):
+        """Get List of workitems based on a query.
+        Query is global and not project specific, so it will return workitems from all projects. Use with caution.
+        Uses the Polarion query language. Documented as 'Advanced Work Item querying' in the Polarion documentation.
+
+        :param query: The query.
+        :param sort: The field to be used for sorting.
+        :return: The workitems matching the query
+        :rtype: Workitem[]
+        """
+        service = self.getService("Tracker")
+        results = service.queryWorkItems(query, sort, fields=["project.id"])
+        workitems = []
+        for result in results:
+            project = self.getProject(result.project.id)
+            workitems.append(Workitem(self, project, uri=result.uri))
+        return workitems
 
     def getProjectGroup(self, group_name):
         """

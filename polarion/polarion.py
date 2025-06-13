@@ -10,7 +10,6 @@ from zeep.transports import Transport
 
 from .project import Project
 from .project_groups import ProjectGroup
-
 from .workitem import Workitem
 import logging
 
@@ -269,6 +268,7 @@ class Polarion(object):
         self.default_project_group = service.getProjectGroupAtLocation('default:/')
         projects = service.getDeepContainedProjects(self.default_project_group.uri)
         return [Project(self, project.id) for project in projects]
+
     def queryWorkitems(self, query: str, sort: str):
         """Get List of workitems based on a query.
         Query is global and not project specific, so it will return workitems from all projects. Use with caution.
